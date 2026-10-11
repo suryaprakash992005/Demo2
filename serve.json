@@ -1,0 +1,30 @@
+{
+  "public": ".",
+  "cleanUrls": false,
+  "trailingSlash": true,
+  "rewrites": [
+    {
+      "source": "/reservation/assets/:splat*",
+      "destination": "/assets/:splat*"
+    },
+    {
+      "source": "/about/assets/:splat*",
+      "destination": "/assets/:splat*"
+    },
+    {
+      "source": "/menu/assets/:splat*",
+      "destination": "/assets/:splat*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "**",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ]
+}

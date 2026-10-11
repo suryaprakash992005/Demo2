@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
-const PORT = 3001;
+const PORTS = [3000, 3001];
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -23,59 +23,67 @@ const MIME_TYPES = {
   '.webm': 'video/webm'
 };
 
-const server = http.createServer((req, res) => {
-  let parsedUrl = url.parse(req.url);
-  let pathname = decodeURIComponent(parsedUrl.pathname);
+function createHandler() {
+  return (req, res) => {
+    let parsedUrl = url.parse(req.url);
+    let pathname = decodeURIComponent(parsedUrl.pathname);
 
-  // Rewrite nested asset requests to root assets
-  if (pathname.startsWith('/reservation/assets/')) {
-    pathname = pathname.replace('/reservation/assets/', '/assets/');
-  } else if (pathname.startsWith('/about/assets/')) {
-    pathname = pathname.replace('/about/assets/', '/assets/');
-  } else if (pathname.startsWith('/menu/assets/')) {
-    pathname = pathname.replace('/menu/assets/', '/assets/');
-  }
-
-  // Route mapping
-  if (pathname === '/' || pathname === '') {
-    pathname = '/index.html';
-  } else if (pathname === '/about' || pathname === '/about/') {
-    pathname = '/about/index.html';
-  } else if (pathname === '/menu' || pathname === '/menu/') {
-    pathname = '/menu/index.html';
-  } else if (pathname === '/reservation' || pathname === '/reservation/') {
-    pathname = '/reservation/index.html';
-  }
-
-  let filePath = path.join(__dirname, pathname);
-
-  fs.stat(filePath, (err, stats) => {
-    if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('404 Not Found: ' + pathname);
-      return;
+    // Rewrite nested asset requests to root assets
+    if (pathname.startsWith('/reservation/assets/')) {
+      pathname = pathname.replace('/reservation/assets/', '/assets/');
+    } else if (pathname.startsWith('/about/assets/')) {
+      pathname = pathname.replace('/about/assets/', '/assets/');
+    } else if (pathname.startsWith('/menu/assets/')) {
+      pathname = pathname.replace('/menu/assets/', '/assets/');
     }
 
-    if (stats.isDirectory()) {
-      filePath = path.join(filePath, 'index.html');
+    // Route mapping
+    if (pathname === '/' || pathname === '') {
+      pathname = '/index.html';
+    } else if (pathname === '/about' || pathname === '/about/') {
+      pathname = '/about/index.html';
+    } else if (pathname === '/menu' || pathname === '/menu/') {
+      pathname = '/menu/index.html';
+    } else if (pathname === '/reservation' || pathname === '/reservation/') {
+      pathname = '/reservation/index.html';
     }
 
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+    let filePath = path.join(__dirname, pathname);
 
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    fs.stat(filePath, (err, stats) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('404 Not Found: ' + pathname);
+        return;
+      }
 
-    const stream = fs.createReadStream(filePath);
-    stream.on('error', (streamErr) => {
-      res.writeHead(500);
-      res.end('Server Error');
+      if (stats.isDirectory()) {
+        filePath = path.join(filePath, 'index.html');
+      }
+
+      const ext = path.extname(filePath).toLowerCase();
+      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+
+      const stream = fs.createReadStream(filePath);
+      stream.on('error', () => {
+        res.writeHead(500);
+        res.end('Server Error');
+      });
+      stream.pipe(res);
     });
-    stream.pipe(res);
-  });
-});
+  };
+}
 
-server.listen(PORT, () => {
-  console.log('Folk Yard Server running at http://localhost:' + PORT + '/');
+PORTS.forEach(port => {
+  const srv = http.createServer(createHandler());
+  srv.listen(port, '0.0.0.0', () => {
+    console.log('Folk Yard Server listening at http://localhost:' + port + '/');
+  });
+  srv.on('error', err => {
+    console.error('Port ' + port + ' error:', err.message);
+  });
 });
